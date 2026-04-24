@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motoristas - Controle de Caminhões</title>
+  <link rel="stylesheet" href="style_ultra_profissional.css">
+</head>
+<body>
+
+  <canvas id="background-canvas"></canvas>
+
+  <nav>
+    <h1>Controle de Caminhões</h1>
+    <div class="nav-links">
+      <a href="index.html">Dashboard</a>
+      <a href="caminhoes.html">Caminhões</a>
+      <a href="motoristas.html" class="ativo">Motoristas</a>
+      <a href="viagens.html">Viagens</a>
+      <a href="historico.html">Histórico</a>
+      <a href="admin.html" id="linkAdmin" style="display: none;">Admin</a>
+      <a href="login.html" id="linkLogin">Login</a>
+      <a href="#" id="linkSair" style="display: none;">Sair</a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Motoristas</h2>
+
+    <div class="filtros">
+      <input type="text" id="filtroNome" placeholder="Filtrar por nome..." onkeyup="carregarMotoristas()">
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Contato</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaMotoristas"></tbody>
+    </table>
+  </main>
+
+  <script>
+const token = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+if (usuario?.role === 'admin') {
+  document.getElementById('linkAdmin').style.display = 'block';
+}
+
+document.getElementById('linkSair').onclick = (e) => {
+  e.preventDefault();
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+};
+
+// Canvas
+function initCanvas() {
+  const canvas = document.getElementById('background-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  let particles = [];
+  
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.8;
+      this.speedY = (Math.random() - 0.5) * 0.8;
+      this.opacity = Math.random() * 0.7 + 0.3;
+    }
+    
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.x < 0) this.x = canvas.width;
+      if (this.y > canvas.height) this.y = 0;
+      if (this.y < 0) this.y = canvas.height;
+    }
+    
+    draw() {
+      ctx.fillStyle = `rgba(37, 99, 235, ${this.opacity})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 120; i++) {
+    particles.push(new Particle());
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+  
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+initCanvas();
+
+function carregarMotoristas() {
+  fetch('/api/motoristas', { headers: { 'Authorization': `Bearer ${token}` } })
+  .then(r => r.json())
+  .then(motoristas => {
+    const tbody = document.getElementById('tabelaMotoristas');
+    tbody.innerHTML = '';
+
+    motoristas.forEach(m => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${m.id}</td>
+          <td>${m.nome}</td>
+          <td>${m.cpf}</td>
+          <td>${m.contato || '-'}</td>
+        </tr>
+      `;
+    });
+  });
+}
+
+carregarMotoristas();
+  </script>
+</body>
+</html>

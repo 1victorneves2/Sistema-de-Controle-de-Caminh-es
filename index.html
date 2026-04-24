@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Caminhões</title>
+  <link rel="stylesheet" href="style_ultra_profissional.css">
+</head>
+<body>
+
+  <canvas id="background-canvas"></canvas>
+
+  <nav>
+    <h1>Controle de Caminhões</h1>
+    <div class="nav-links">
+      <a href="index.html" class="ativo">Dashboard</a>
+      <a href="admin.html" id="linkAdmin" style="display: none;">Admin</a>
+      <a href="login.html" id="linkLogin">Login</a>
+      <a href="#" id="linkSair" style="display: none;">Sair</a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Dashboard de Operações</h2>
+    
+    <div class="cards">
+      <div class="card">
+        <h3>Caminhões Disponíveis</h3>
+        <p class="numero" id="disponveis">0</p>
+      </div>
+      <div class="card">
+        <h3>Em Rota</h3>
+        <p class="numero" id="em-rota">0</p>
+      </div>
+      <div class="card">
+        <h3>Entregues Hoje</h3>
+        <p class="numero" id="entregues">0</p>
+      </div>
+      <div class="card">
+        <h3>Com Problema</h3>
+        <p class="numero" id="problema">0</p>
+      </div>
+    </div>
+
+    <h2>Viagens Ativas</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Caminhão</th>
+          <th>Motorista</th>
+          <th>Rota</th>
+          <th>Status</th>
+          <th>Data Saída</th>
+        </tr>
+      </thead>
+      <tbody id="viagensTabela">
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+const token = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+if (token && usuario) {
+  document.getElementById('linkLogin').style.display = 'none';
+  document.getElementById('linkSair').style.display = 'block';
+  
+  if (usuario.role === 'admin') {
+    document.getElementById('linkAdmin').style.display = 'block';
+  }
+} else {
+  document.getElementById('linkSair').style.display = 'none';
+}
+
+document.getElementById('linkSair').onclick = function(e) {
+  e.preventDefault();
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+};
+
+function initCanvas() {
+  const canvas = document.getElementById('background-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  let particles = [];
+  
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.8;
+      this.speedY = (Math.random() - 0.5) * 0.8;
+      this.opacity = Math.random() * 0.7 + 0.3;
+    }
+    
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.x < 0) this.x = canvas.width;
+      if (this.y > canvas.height) this.y = 0;
+      if (this.y < 0) this.y = canvas.height;
+    }
+    
+    draw() {
+      ctx.fillStyle = 'rgba(37, 99, 235, ' + this.opacity + ')';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 120; i++) {
+    particles.push(new Particle());
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(function(p) {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+  
+  window.addEventListener('resize', function() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+initCanvas();
+
+function atualizarDashboard() {
+  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+  Promise.all([
+    fetch('/api/caminhoes', { headers: headers }).then(function(r) { return r.json(); }),
+    fetch('/api/viagens', { headers: headers }).then(function(r) { return r.json(); })
+  ]).then(function(results) {
+    const caminhoes = results[0];
+    const viagens = results[1];
+    
+    const disponveis = caminhoes.filter(function(c) { return c.status === 'disponivel'; }).length;
+    const emRota = viagens.filter(function(v) { return v.status === 'saiu_para_entrega'; }).length;
+    const entregues = viagens.filter(function(v) { return v.status === 'entregue'; }).length;
+    const problema = viagens.filter(function(v) { return v.status === 'retorno_problema'; }).length;
+
+    animarNumero('disponveis', disponveis);
+    animarNumero('em-rota', emRota);
+    animarNumero('entregues', entregues);
+    animarNumero('problema', problema);
+
+    carregarViagensTabela(viagens);
+  });
+}
+
+function animarNumero(id, valor) {
+  const elemento = document.getElementById(id);
+  const inicio = parseInt(elemento.textContent) || 0;
+  const diferenca = valor - inicio;
+  const passos = 30;
+  let atual = 0;
+  
+  const intervalo = setInterval(function() {
+    atual++;
+    const novoValor = Math.floor(inicio + (diferenca * (atual / passos)));
+    elemento.textContent = novoValor;
+    
+    if (atual >= passos) {
+      elemento.textContent = valor;
+      clearInterval(intervalo);
+    }
+  }, 20);
+}
+
+function carregarViagensTabela(viagens) {
+  const tbody = document.getElementById('viagensTabela');
+  tbody.innerHTML = '';
+
+  viagens.filter(function(v) { return v.status !== 'entregue'; }).slice(0, 10).forEach(function(v) {
+    var statusBg = 'background: rgba(37, 99, 235, 0.2); color: #60a5fa;';
+    if (v.status === 'disponivel') { statusBg = 'background: rgba(16, 185, 129, 0.2); color: #10b981;'; }
+    if (v.status === 'carregado') { statusBg = 'background: rgba(245, 158, 11, 0.2); color: #fbbf24;'; }
+    if (v.status === 'entregue') { statusBg = 'background: rgba(16, 185, 129, 0.2); color: #10b981;'; }
+    if (v.status === 'retorno_problema') { statusBg = 'background: rgba(239, 68, 68, 0.2); color: #ef4444;'; }
+    
+    tbody.innerHTML += '<tr style="border-top: 1px solid rgba(37, 99, 235, 0.1);"><td style="padding: 1.25rem; color: #e0e7ff;">' + v.id + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.placa + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.motorista + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.rota + '</td><td style="padding: 1.25rem;"><span style="' + statusBg + ' padding: 8px 14px; border-radius: 24px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; display: inline-block;">' + v.status + '</span></td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.data_saida + '</td></tr>';
+  });
+
+  if (!viagens || viagens.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">Nenhuma viagem ativa</td></tr>';
+  }
+}
+
+atualizarDashboard();
+setInterval(atualizarDashboard, 15000);
+  </script>
+</body>
+</html>

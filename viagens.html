@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viagens - Controle de Caminhões</title>
+  <link rel="stylesheet" href="style_ultra_profissional.css">
+  <style>
+    .buscas-avancadas {
+      background: linear-gradient(135deg, #141a2f 0%, #1e2847 100%);
+      padding: 2rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+    
+    .filtros-busca {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .filtros-busca input,
+    .filtros-busca select {
+      background: rgba(10, 15, 31, 0.6);
+      border: 1.5px solid rgba(37, 99, 235, 0.2);
+      color: #e0e7ff;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    
+    .badge-status {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .notificacao {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    .resultado-busca {
+      background: rgba(20, 26, 47, 0.8);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      border-left: 5px solid #3b82f6;
+      transition: all 0.3s ease;
+    }
+    
+    .resultado-busca:hover {
+      border-left-color: #60a5fa;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transform: translateX(4px);
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="background-canvas"></canvas>
+
+  <nav>
+    <h1>Controle de Caminhões</h1>
+    <div class="nav-links">
+      <a href="index.html">Dashboard</a>
+      <a href="viagens.html" class="ativo">Viagens</a>
+      <a href="admin.html" id="linkAdmin" style="display: none;">Admin</a>
+      <a href="login.html" id="linkLogin">Login</a>
+      <a href="#" id="linkSair" style="display: none;">Sair</a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Gerenciar Viagens</h2>
+
+    <button onclick="abrirModalViagem()" style="margin-bottom: 2rem; padding: 13px 26px; border: none; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: #0a0f1f; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35%);">Criar Nova Viagem</button>
+
+    <!-- BUSCA AVANÇADA -->
+    <div class="buscas-avancadas">
+      <h3 style="color: #60a5fa; margin-bottom: 1rem; text-transform: uppercase;">Pesquisar Viagens</h3>
+      
+      <div class="filtros-busca">
+        <input type="text" id="campoPesquisa" placeholder="ID, Placa, Rota, Motorista, NF..." onkeyup="buscarViagens()">
+        <input type="date" id="dataInicio" onchange="buscarPorData()">
+        <input type="date" id="dataFim" onchange="buscarPorData()">
+        <button onclick="limparBusca()" style="padding: 12px 24px; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: #0a0f1f; border: none; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; text-transform: uppercase; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);">Limpar</button>
+      </div>
+      
+      <div id="resultadosBusca" style="margin-top: 1rem;"></div>
+    </div>
+
+    <!-- TABELA DE VIAGENS -->
+    <h3 style="color: #60a5fa; margin-top: 2rem; margin-bottom: 1rem; text-transform: uppercase;">Viagens Ativas</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Caminhão</th>
+          <th>Motorista</th>
+          <th>Rota</th>
+          <th>Mercadoria</th>
+          <th>Status</th>
+          <th>Saída</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaViagens"></tbody>
+    </table>
+  </main>
+
+  <!-- MODAL NOVA VIAGEM -->
+  <div id="modalViagem" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(6px);">
+    <div style="background: linear-gradient(135deg, #0a0f1f 0%, #141a2f 100%); padding: 2.5rem; border-radius: 14px; width: 90%; max-width: 520px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); border: 1px solid rgba(37, 99, 235, 0.2);">
+      <h3 style="margin-bottom: 2rem; font-size: 24px; color: #60a5fa; text-transform: uppercase;">Criar Nova Viagem</h3>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #e0e7ff; font-size: 13px; text-transform: uppercase;">Caminhão</label>
+        <select id="caminhao" style="width: 100%; background: rgba(10, 15, 31, 0.6); border: 1.5px solid rgba(37, 99, 235, 0.2); color: #e0e7ff; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+          <option value="">Selecione o caminhão</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #e0e7ff; font-size: 13px; text-transform: uppercase;">Motorista</label>
+        <select id="motorista" style="width: 100%; background: rgba(10, 15, 31, 0.6); border: 1.5px solid rgba(37, 99, 235, 0.2); color: #e0e7ff; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+          <option value="">Selecione o motorista</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #e0e7ff; font-size: 13px; text-transform: uppercase;">Funcionário</label>
+        <select id="funcionario" style="width: 100%; background: rgba(10, 15, 31, 0.6); border: 1.5px solid rgba(37, 99, 235, 0.2); color: #e0e7ff; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+          <option value="">Selecione o funcionário</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #e0e7ff; font-size: 13px; text-transform: uppercase;">Rota</label>
+        <input type="text" id="rota" placeholder="Ex: São Paulo - Rio de Janeiro" style="width: 100%; background: rgba(10, 15, 31, 0.6); border: 1.5px solid rgba(37, 99, 235, 0.2); color: #e0e7ff; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #e0e7ff; font-size: 13px; text-transform: uppercase;">Mercadoria</label>
+        <input type="text" id="mercadoria" placeholder="Ex: Eletrônicos" style="width: 100%; background: rgba(10, 15, 31, 0.6); border: 1.5px solid rgba(37, 99, 235, 0.2); color: #e0e7ff; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 700; color: #e0e7ff; font-size: 13px; text-transform: uppercase;">Nota Fiscal</label>
+        <input type="text" id="nota_fiscal" placeholder="Ex: NF-001" style="width: 100%; background: rgba(10, 15, 31, 0.6); border: 1.5px solid rgba(37, 99, 235, 0.2); color: #e0e7ff; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 2rem;">
+        <button onclick="fecharModal('modalViagem')" style="padding: 12px 24px; background: rgba(51, 65, 85, 0.6); color: #e0e7ff; border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; text-transform: uppercase;">Cancelar</button>
+        <button onclick="criarViagem()" style="padding: 12px 24px; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: #0a0f1f; border: none; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; text-transform: uppercase; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);">Criar Viagem</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+const token = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+if (usuario.role === 'admin') {
+  document.getElementById('linkAdmin').style.display = 'block';
+}
+
+document.getElementById('linkSair').onclick = function(e) {
+  e.preventDefault();
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+};
+
+// ========================================
+// WEBSOCKET - TEMPO REAL
+// ========================================
+let ws = null;
+
+function conectarWebSocket() {
+  const protocolo = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(protocolo + '//' + window.location.host);
+
+  ws.onopen = function() {
+    console.log('WebSocket conectado');
+    carregarViagens();
+  };
+
+  ws.onmessage = function(event) {
+    const mensagem = JSON.parse(event.data);
+    console.log('Mensagem recebida:', mensagem.evento);
+
+    if (mensagem.evento === 'viagem_criada') {
+      mostrarNotificacao('Viagem criada: ' + mensagem.dados.rota);
+      carregarViagens();
+    } 
+    else if (mensagem.evento === 'viagem_atualizada') {
+      mostrarNotificacao('Viagem atualizada: ' + mensagem.dados.status);
+      carregarViagens();
+    }
+    else if (mensagem.evento === 'viagem_cancelada') {
+      mostrarNotificacao('Viagem cancelada');
+      carregarViagens();
+    }
+  };
+
+  ws.onerror = function(erro) {
+    console.error('Erro WebSocket:', erro);
+  };
+
+  ws.onclose = function() {
+    console.log('WebSocket desconectado, reconectando...');
+    setTimeout(conectarWebSocket, 3000);
+  };
+}
+
+function mostrarNotificacao(mensagem) {
+  const notif = document.createElement('div');
+  notif.className = 'notificacao';
+  notif.textContent = mensagem;
+  document.body.appendChild(notif);
+
+  setTimeout(() => notif.remove(), 3000);
+}
+
+// ========================================
+// CANVAS
+// ========================================
+function initCanvas() {
+  const canvas = document.getElementById('background-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  let particles = [];
+  
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.8;
+      this.speedY = (Math.random() - 0.5) * 0.8;
+      this.opacity = Math.random() * 0.7 + 0.3;
+    }
+    
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.x < 0) this.x = canvas.width;
+      if (this.y > canvas.height) this.y = 0;
+      if (this.y < 0) this.y = canvas.height;
+    }
+    
+    draw() {
+      ctx.fillStyle = 'rgba(37, 99, 235, ' + this.opacity + ')';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 120; i++) {
+    particles.push(new Particle());
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(function(p) {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+  
+  window.addEventListener('resize', function() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+initCanvas();
+conectarWebSocket();
+
+// ========================================
+// VIAGENS
+// ========================================
+function abrirModalViagem() {
+  document.getElementById('modalViagem').style.display = 'flex';
+  carregarSelects();
+}
+
+function carregarSelects() {
+  Promise.all([
+    fetch('/api/caminhoes', { headers: { 'Authorization': 'Bearer ' + token } }).then(function(r) { return r.json(); }),
+    fetch('/api/motoristas', { headers: { 'Authorization': 'Bearer ' + token } }).then(function(r) { return r.json(); }),
+    fetch('/api/funcionarios', { headers: { 'Authorization': 'Bearer ' + token } }).then(function(r) { return r.json(); })
+  ]).then(function(results) {
+    var caminhoes = results[0];
+    var motoristas = results[1];
+    var funcionarios = results[2];
+    
+    var selCaminhao = document.getElementById('caminhao');
+    var selMotorista = document.getElementById('motorista');
+    var selFuncionario = document.getElementById('funcionario');
+
+    selCaminhao.innerHTML = '<option value="">Selecione o caminhão</option>';
+    caminhoes.forEach(function(c) {
+      if (c.status === 'disponivel') {
+        selCaminhao.innerHTML += '<option value="' + c.id + '">' + c.placa + ' - ' + c.tipo + '</option>';
+      }
+    });
+
+    selMotorista.innerHTML = '<option value="">Selecione o motorista</option>';
+    motoristas.forEach(function(m) {
+      selMotorista.innerHTML += '<option value="' + m.id + '">' + m.nome + '</option>';
+    });
+
+    selFuncionario.innerHTML = '<option value="">Selecione o funcionário</option>';
+    funcionarios.forEach(function(f) {
+      selFuncionario.innerHTML += '<option value="' + f.id + '">' + f.nome + ' - ' + f.funcao + '</option>';
+    });
+  });
+}
+
+function criarViagem() {
+  var caminhao_id = document.getElementById('caminhao').value;
+  var motorista_id = document.getElementById('motorista').value;
+  var funcionario_id = document.getElementById('funcionario').value;
+  var rota = document.getElementById('rota').value;
+  var mercadoria = document.getElementById('mercadoria').value;
+  var nota_fiscal = document.getElementById('nota_fiscal').value;
+
+  if (!caminhao_id || !motorista_id || !funcionario_id || !rota || !mercadoria || !nota_fiscal) {
+    alert('Preencha todos os campos!');
+    return;
+  }
+
+  fetch('/api/viagens', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ 
+      caminhao_id: parseInt(caminhao_id), 
+      motorista_id: parseInt(motorista_id), 
+      funcionario_id: parseInt(funcionario_id), 
+      rota: rota, 
+      mercadoria: mercadoria, 
+      nota_fiscal: nota_fiscal 
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.erro) {
+      alert(data.erro);
+      return;
+    }
+    fecharModal('modalViagem');
+    document.getElementById('caminhao').value = '';
+    document.getElementById('motorista').value = '';
+    document.getElementById('funcionario').value = '';
+    document.getElementById('rota').value = '';
+    document.getElementById('mercadoria').value = '';
+    document.getElementById('nota_fiscal').value = '';
+  });
+}
+
+function carregarViagens() {
+  fetch('/api/viagens', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(viagens) {
+    var tbody = document.getElementById('tabelaViagens');
+    tbody.innerHTML = '';
+
+    if (!viagens || viagens.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">Nenhuma viagem registrada</td></tr>';
+      return;
+    }
+
+    viagens.forEach(function(v) {
+      var statusBg = 'background: rgba(37, 99, 235, 0.2); color: #60a5fa;';
+      if (v.status === 'carregado') statusBg = 'background: rgba(245, 158, 11, 0.2); color: #fbbf24;';
+      if (v.status === 'saiu_para_entrega') statusBg = 'background: rgba(37, 99, 235, 0.2); color: #60a5fa;';
+      if (v.status === 'entregue') statusBg = 'background: rgba(16, 185, 129, 0.2); color: #10b981;';
+      if (v.status === 'retorno_problema') statusBg = 'background: rgba(239, 68, 68, 0.2); color: #ef4444;';
+
+      tbody.innerHTML += '<tr style="border-top: 1px solid rgba(37, 99, 235, 0.1);"><td style="padding: 1.25rem; color: #e0e7ff;">' + v.id + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.placa + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.motorista + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.rota + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.mercadoria + '</td><td style="padding: 1.25rem;"><span style="' + statusBg + ' padding: 8px 14px; border-radius: 24px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; display: inline-block;">' + v.status + '</span></td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.data_saida.substring(0, 10) + '</td><td style="padding: 1.25rem;"><button onclick="atualizarStatusViagem(' + v.id + ',\'' + v.status + '\')" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase;">Atualizar</button></td></tr>';
+    });
+  });
+}
+
+function atualizarStatusViagem(id, statusAtual) {
+  var novoStatus;
+  
+  if (statusAtual === 'carregado') {
+    novoStatus = 'saiu_para_entrega';
+  } else if (statusAtual === 'saiu_para_entrega') {
+    novoStatus = 'entregue';
+  } else {
+    novoStatus = 'entregue';
+  }
+
+  fetch('/api/viagens/' + id, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ status: novoStatus })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.erro) {
+      alert('Erro: ' + data.erro);
+      return;
+    }
+    console.log('Viagem atualizada para:', novoStatus);
+  });
+}
+
+// ========================================
+// BUSCA AVANÇADA
+// ========================================
+function buscarViagens() {
+  var termo = document.getElementById('campoPesquisa').value;
+  
+  if (!termo) {
+    document.getElementById('resultadosBusca').innerHTML = '';
+    return;
+  }
+
+  fetch('/api/viagens/buscar/' + encodeURIComponent(termo), {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(viagens) {
+    var div = document.getElementById('resultadosBusca');
+    
+    if (!viagens || viagens.length === 0) {
+      div.innerHTML = '<p style="color: rgba(224, 231, 255, 0.5);">Nenhuma viagem encontrada</p>';
+      return;
+    }
+
+    var html = '<p style="color: #60a5fa; margin-bottom: 1rem;"><strong>' + viagens.length + ' viagem(ns) encontrada(s)</strong></p>';
+    
+    viagens.forEach(function(v) {
+      var statusBg = 'background: rgba(37, 99, 235, 0.2); color: #60a5fa;';
+      if (v.status === 'entregue') statusBg = 'background: rgba(16, 185, 129, 0.2); color: #10b981;';
+      if (v.status === 'retorno_problema') statusBg = 'background: rgba(239, 68, 68, 0.2); color: #ef4444;';
+      
+      html += '<div class="resultado-busca"><strong>ID #' + v.id + ' - ' + v.placa + '</strong><br>';
+      html += 'Motorista: ' + v.motorista + '<br>';
+      html += 'Rota: ' + v.rota + '<br>';
+      html += 'Mercadoria: ' + v.mercadoria + '<br>';
+      html += 'NF: ' + v.nota_fiscal + '<br>';
+      html += 'Status: <span style="' + statusBg + ' padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block;">' + v.status + '</span><br>';
+      html += 'Saída: ' + v.data_saida.substring(0, 16) + '</div>';
+    });
+    
+    div.innerHTML = html;
+  });
+}
+
+function buscarPorData() {
+  var dataInicio = document.getElementById('dataInicio').value;
+  var dataFim = document.getElementById('dataFim').value;
+  
+  if (!dataInicio || !dataFim) {
+    return;
+  }
+
+  fetch('/api/viagens/data/' + dataInicio + '/' + dataFim, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(viagens) {
+    var div = document.getElementById('resultadosBusca');
+    
+    if (!viagens || viagens.length === 0) {
+      div.innerHTML = '<p style="color: rgba(224, 231, 255, 0.5);">Nenhuma viagem no período</p>';
+      return;
+    }
+
+    var html = '<p style="color: #60a5fa; margin-bottom: 1rem;"><strong>' + viagens.length + ' viagem(ns) de ' + dataInicio + ' a ' + dataFim + '</strong></p>';
+    
+    viagens.forEach(function(v) {
+      html += '<div class="resultado-busca"><strong>ID #' + v.id + ' - ' + v.placa + '</strong><br>';
+      html += 'Rota: ' + v.rota + ' | Status: ' + v.status + '<br>';
+      html += 'Saída: ' + v.data_saida.substring(0, 16) + '</div>';
+    });
+    
+    div.innerHTML = html;
+  });
+}
+
+function limparBusca() {
+  document.getElementById('campoPesquisa').value = '';
+  document.getElementById('dataInicio').value = '';
+  document.getElementById('dataFim').value = '';
+  document.getElementById('resultadosBusca').innerHTML = '';
+}
+
+function fecharModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+carregarViagens();
+  </script>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin - Controle de Caminhões</title>
+  <link rel="stylesheet" href="style_ultra_profissional.css">
+</head>
+<body>
+
+  <canvas id="background-canvas"></canvas>
+
+  <nav>
+    <h1>Painel Administrativo</h1>
+    <div style="display: flex; gap: 15px; align-items: center;">
+      <a href="index.html">Dashboard</a>
+      <span style="color: #60a5fa; font-weight: 600; padding: 8px 16px;" id="usuarioNome">Admin</span>
+      <a href="#" onclick="logout(); return false;" style="color: #e2e8f0;">Sair</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="tabs">
+      <button class="ativo" onclick="abrirAba('caminhoes')">Caminhões</button>
+      <button onclick="abrirAba('motoristas')">Motoristas</button>
+      <button onclick="abrirAba('funcionarios')">Funcionários</button>
+      <button onclick="abrirAba('viagens')">Viagens</button>
+      <button onclick="abrirAba('historico')">Histórico</button>
+    </div>
+
+    <!-- CAMINHÕES -->
+    <div id="caminhoes" class="tab-content ativo">
+      <h2>Gerenciar Caminhões</h2>
+      <button onclick="abrirModalCaminhao()" style="margin-bottom: 20px;">Novo Caminhão</button>
+      
+      <div class="filtros">
+        <input type="text" id="filtroPlaca" placeholder="Filtrar por placa" onkeyup="carregarCaminhoes()">
+        <select id="filtroStatusCaminhao" onchange="carregarCaminhoes()">
+          <option value="">Todos os status</option>
+          <option value="disponivel">Disponível</option>
+          <option value="carregado">Carregado</option>
+          <option value="saiu_para_entrega">Saiu para Entrega</option>
+        </select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Placa</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th>Ativo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaCaminhoes"></tbody>
+      </table>
+    </div>
+
+    <!-- MOTORISTAS -->
+    <div id="motoristas" class="tab-content">
+      <h2>Gerenciar Motoristas</h2>
+      <button onclick="abrirModalMotorista()" style="margin-bottom: 20px;">Novo Motorista</button>
+      
+      <div class="filtros">
+        <input type="text" id="filtroMotorista" placeholder="Filtrar por nome" onkeyup="carregarMotoristas()">
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Contato</th>
+            <th>Ativo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaMotoristas"></tbody>
+      </table>
+    </div>
+
+    <!-- FUNCIONÁRIOS -->
+    <div id="funcionarios" class="tab-content">
+      <h2>Gerenciar Funcionários</h2>
+      <button onclick="abrirModalFuncionario()" style="margin-bottom: 20px;">Novo Funcionário</button>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Função</th>
+            <th>Ativo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaFuncionarios"></tbody>
+      </table>
+    </div>
+
+    <!-- VIAGENS -->
+    <div id="viagens" class="tab-content">
+      <h2>Gerenciar Viagens</h2>
+      
+      <div class="filtros">
+        <select id="filtroStatusViagem" onchange="carregarViagens()">
+          <option value="">Todos os status</option>
+          <option value="carregado">Carregado</option>
+          <option value="saiu_para_entrega">Saiu para Entrega</option>
+          <option value="entregue">Entregue</option>
+          <option value="retorno_problema">Retorno com Problema</option>
+        </select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Caminhão</th>
+            <th>Motorista</th>
+            <th>Rota</th>
+            <th>Status</th>
+            <th>Data Saída</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaViagens"></tbody>
+      </table>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="historico" class="tab-content">
+      <h2>Histórico de Operações</h2>
+      
+      <div class="filtros">
+        <input type="date" id="dataInicio" onchange="carregarHistorico()">
+        <input type="date" id="dataFim" onchange="carregarHistorico()">
+        <select id="filtroTabelaHistorico" onchange="carregarHistorico()">
+          <option value="">Todas as tabelas</option>
+          <option value="caminhoes">Caminhões</option>
+          <option value="motoristas">Motoristas</option>
+          <option value="funcionarios">Funcionários</option>
+          <option value="viagens">Viagens</option>
+        </select>
+      </div>
+
+      <div id="listaHistorico"></div>
+    </div>
+  </main>
+
+  <!-- MODAL CAMINHÃO -->
+  <div id="modalCaminhao" class="modal">
+    <div class="modal-content">
+      <h3 id="tituloCaminhao">Novo Caminhão</h3>
+      <input type="hidden" id="idCaminhaoEdicao">
+      <div class="form-group">
+        <label>Placa</label>
+        <input type="text" id="placaCaminhao">
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="tipoCaminhao">
+          <option value="truck">Truck</option>
+          <option value="toco">Toco</option>
+          <option value="carreta">Carreta</option>
+          <option value="van">Van</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-salvar" onclick="salvarCaminhao()">Salvar</button>
+        <button class="btn-cancelar" onclick="fecharModal('modalCaminhao')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MOTORISTA -->
+  <div id="modalMotorista" class="modal">
+    <div class="modal-content">
+      <h3 id="tituloMotorista">Novo Motorista</h3>
+      <input type="hidden" id="idMotoristaEdicao">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="nomeMotorista">
+      </div>
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" id="cpfMotorista">
+      </div>
+      <div class="form-group">
+        <label>Contato</label>
+        <input type="text" id="contatoMotorista">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-salvar" onclick="salvarMotorista()">Salvar</button>
+        <button class="btn-cancelar" onclick="fecharModal('modalMotorista')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FUNCIONÁRIO -->
+  <div id="modalFuncionario" class="modal">
+    <div class="modal-content">
+      <h3 id="tituloFuncionario">Novo Funcionário</h3>
+      <input type="hidden" id="idFuncionarioEdicao">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="nomeFuncionario">
+      </div>
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" id="cpfFuncionario">
+      </div>
+      <div class="form-group">
+        <label>Função</label>
+        <input type="text" id="funcaoFuncionario" placeholder="Ex: Conferente, Carregador">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-salvar" onclick="salvarFuncionario()">Salvar</button>
+        <button class="btn-cancelar" onclick="fecharModal('modalFuncionario')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+// ========================================
+// AUTENTICAÇÃO - DECLARAR UMA ÚNICA VEZ
+// ========================================
+const token = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+console.log('Verificando acesso...');
+console.log('Token:', token ? 'Existe' : 'Não existe');
+console.log('Usuário:', usuario.role || 'Não encontrado');
+
+// PROTEGER: Apenas admins podem acessar
+if (!token || usuario.role !== 'admin') {
+  console.log('ERRO: Acesso negado');
+  alert('Acesso negado! Apenas administradores podem acessar esta página.');
+  window.location.href = 'index.html';
+}
+
+console.log('ACESSO PERMITIDO - Usuário é admin');
+document.getElementById('usuarioNome').textContent = usuario.nome || 'Admin';
+
+// ========================================
+// CANVAS BACKGROUND
+// ========================================
+function initCanvas() {
+  const canvas = document.getElementById('background-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  let particles = [];
+  
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 2 + 0.5;
+      this.speedX = (Math.random() - 0.5) * 0.5;
+      this.speedY = (Math.random() - 0.5) * 0.5;
+      this.opacity = Math.random() * 0.5 + 0.2;
+    }
+    
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.x < 0) this.x = canvas.width;
+      if (this.y > canvas.height) this.y = 0;
+      if (this.y < 0) this.y = canvas.height;
+    }
+    
+    draw() {
+      ctx.fillStyle = 'rgba(59, 130, 246, ' + this.opacity + ')';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 50; i++) {
+    particles.push(new Particle());
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(function(p) {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+  
+  window.addEventListener('resize', function() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+initCanvas();
+
+// ========================================
+// ABAS
+// ========================================
+function abrirAba(nome) {
+  var abas = document.querySelectorAll('.tab-content');
+  var botoes = document.querySelectorAll('.tabs button');
+  
+  abas.forEach(function(el) { el.classList.remove('ativo'); });
+  botoes.forEach(function(el) { el.classList.remove('ativo'); });
+  
+  document.getElementById(nome).classList.add('ativo');
+  event.target.classList.add('ativo');
+
+  if (nome === 'caminhoes') carregarCaminhoes();
+  if (nome === 'motoristas') carregarMotoristas();
+  if (nome === 'funcionarios') carregarFuncionarios();
+  if (nome === 'viagens') carregarViagens();
+  if (nome === 'historico') carregarHistorico();
+}
+
+// ========================================
+// CAMINHÕES
+// ========================================
+function abrirModalCaminhao(id) {
+  document.getElementById('idCaminhaoEdicao').value = id || '';
+  
+  if (id) {
+    document.getElementById('tituloCaminhao').textContent = 'Editar Caminhão';
+    var caminhao = JSON.parse(sessionStorage.getItem('caminhao_' + id));
+    if (caminhao) {
+      document.getElementById('placaCaminhao').value = caminhao.placa;
+      document.getElementById('tipoCaminhao').value = caminhao.tipo;
+    }
+  } else {
+    document.getElementById('tituloCaminhao').textContent = 'Novo Caminhão';
+    document.getElementById('placaCaminhao').value = '';
+    document.getElementById('tipoCaminhao').value = 'truck';
+  }
+  
+  document.getElementById('modalCaminhao').classList.add('ativo');
+}
+
+function salvarCaminhao() {
+  var id = document.getElementById('idCaminhaoEdicao').value;
+  var placa = document.getElementById('placaCaminhao').value;
+  var tipo = document.getElementById('tipoCaminhao').value;
+
+  if (!placa) {
+    alert('Preencha a placa!');
+    return;
+  }
+
+  var metodo = id ? 'PUT' : 'POST';
+  var url = id ? '/api/caminhoes/' + id : '/api/caminhoes';
+
+  fetch(url, {
+    method: metodo,
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ placa: placa, tipo: tipo })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.erro) {
+      alert(data.erro);
+      return;
+    }
+    fecharModal('modalCaminhao');
+    carregarCaminhoes();
+  });
+}
+
+function carregarCaminhoes() {
+  fetch('/api/caminhoes', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(caminhoes) {
+    var tbody = document.getElementById('tabelaCaminhoes');
+    tbody.innerHTML = '';
+
+    caminhoes.forEach(function(c) {
+      sessionStorage.setItem('caminhao_' + c.id, JSON.stringify(c));
+      var statusBg = 'background: rgba(37, 99, 235, 0.2); color: #60a5fa;';
+      if (c.status === 'disponivel') statusBg = 'background: rgba(16, 185, 129, 0.2); color: #10b981;';
+      
+      tbody.innerHTML += '<tr style="border-top: 1px solid rgba(37, 99, 235, 0.1);"><td style="padding: 1.25rem; color: #e0e7ff;">' + c.id + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + c.placa + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + c.tipo + '</td><td style="padding: 1.25rem;"><span style="' + statusBg + ' padding: 8px 14px; border-radius: 24px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block;">' + c.status + '</span></td><td style="padding: 1.25rem; color: #e0e7ff;">' + (c.ativo ? 'Sim' : 'Não') + '</td><td style="padding: 1.25rem;"><button class="btn-editar" onclick="abrirModalCaminhao(' + c.id + ')" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; margin-right: 5px;">Editar</button><button class="btn-deletar" onclick="deletarCaminhao(' + c.id + ')" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase;">Deletar</button></td></tr>';
+    });
+  });
+}
+
+function deletarCaminhao(id) {
+  if (confirm('Tem certeza?')) {
+    fetch('/api/caminhoes/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function() { carregarCaminhoes(); });
+  }
+}
+
+// ========================================
+// MOTORISTAS
+// ========================================
+function abrirModalMotorista(id) {
+  document.getElementById('idMotoristaEdicao').value = id || '';
+  
+  if (id) {
+    document.getElementById('tituloMotorista').textContent = 'Editar Motorista';
+    var motorista = JSON.parse(sessionStorage.getItem('motorista_' + id));
+    if (motorista) {
+      document.getElementById('nomeMotorista').value = motorista.nome;
+      document.getElementById('cpfMotorista').value = motorista.cpf;
+      document.getElementById('contatoMotorista').value = motorista.contato || '';
+    }
+  } else {
+    document.getElementById('tituloMotorista').textContent = 'Novo Motorista';
+    document.getElementById('nomeMotorista').value = '';
+    document.getElementById('cpfMotorista').value = '';
+    document.getElementById('contatoMotorista').value = '';
+  }
+  
+  document.getElementById('modalMotorista').classList.add('ativo');
+}
+
+function salvarMotorista() {
+  var id = document.getElementById('idMotoristaEdicao').value;
+  var nome = document.getElementById('nomeMotorista').value;
+  var cpf = document.getElementById('cpfMotorista').value;
+  var contato = document.getElementById('contatoMotorista').value;
+
+  if (!nome || !cpf) {
+    alert('Preencha nome e CPF!');
+    return;
+  }
+
+  var metodo = id ? 'PUT' : 'POST';
+  var url = id ? '/api/motoristas/' + id : '/api/motoristas';
+
+  fetch(url, {
+    method: metodo,
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ nome: nome, cpf: cpf, contato: contato })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.erro) {
+      alert(data.erro);
+      return;
+    }
+    fecharModal('modalMotorista');
+    carregarMotoristas();
+  });
+}
+
+function carregarMotoristas() {
+  fetch('/api/motoristas', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(motoristas) {
+    var tbody = document.getElementById('tabelaMotoristas');
+    tbody.innerHTML = '';
+
+    motoristas.forEach(function(m) {
+      sessionStorage.setItem('motorista_' + m.id, JSON.stringify(m));
+      tbody.innerHTML += '<tr style="border-top: 1px solid rgba(37, 99, 235, 0.1);"><td style="padding: 1.25rem; color: #e0e7ff;">' + m.id + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + m.nome + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + m.cpf + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + (m.contato || '-') + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + (m.ativo ? 'Sim' : 'Não') + '</td><td style="padding: 1.25rem;"><button class="btn-editar" onclick="abrirModalMotorista(' + m.id + ')" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; margin-right: 5px;">Editar</button><button class="btn-deletar" onclick="deletarMotorista(' + m.id + ')" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase;">Deletar</button></td></tr>';
+    });
+  });
+}
+
+function deletarMotorista(id) {
+  if (confirm('Tem certeza?')) {
+    fetch('/api/motoristas/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function() { carregarMotoristas(); });
+  }
+}
+
+// ========================================
+// FUNCIONÁRIOS
+// ========================================
+function abrirModalFuncionario(id) {
+  document.getElementById('idFuncionarioEdicao').value = id || '';
+  
+  if (id) {
+    document.getElementById('tituloFuncionario').textContent = 'Editar Funcionário';
+    var funcionario = JSON.parse(sessionStorage.getItem('funcionario_' + id));
+    if (funcionario) {
+      document.getElementById('nomeFuncionario').value = funcionario.nome;
+      document.getElementById('cpfFuncionario').value = funcionario.cpf;
+      document.getElementById('funcaoFuncionario').value = funcionario.funcao;
+    }
+  } else {
+    document.getElementById('tituloFuncionario').textContent = 'Novo Funcionário';
+    document.getElementById('nomeFuncionario').value = '';
+    document.getElementById('cpfFuncionario').value = '';
+    document.getElementById('funcaoFuncionario').value = '';
+  }
+  
+  document.getElementById('modalFuncionario').classList.add('ativo');
+}
+
+function salvarFuncionario() {
+  var id = document.getElementById('idFuncionarioEdicao').value;
+  var nome = document.getElementById('nomeFuncionario').value;
+  var cpf = document.getElementById('cpfFuncionario').value;
+  var funcao = document.getElementById('funcaoFuncionario').value;
+
+  if (!nome || !cpf || !funcao) {
+    alert('Preencha todos os campos!');
+    return;
+  }
+
+  var metodo = id ? 'PUT' : 'POST';
+  var url = id ? '/api/funcionarios/' + id : '/api/funcionarios';
+
+  fetch(url, {
+    method: metodo,
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ nome: nome, cpf: cpf, funcao: funcao })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.erro) {
+      alert(data.erro);
+      return;
+    }
+    fecharModal('modalFuncionario');
+    carregarFuncionarios();
+  });
+}
+
+function carregarFuncionarios() {
+  fetch('/api/funcionarios', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(funcionarios) {
+    var tbody = document.getElementById('tabelaFuncionarios');
+    tbody.innerHTML = '';
+
+    funcionarios.forEach(function(f) {
+      sessionStorage.setItem('funcionario_' + f.id, JSON.stringify(f));
+      tbody.innerHTML += '<tr style="border-top: 1px solid rgba(37, 99, 235, 0.1);"><td style="padding: 1.25rem; color: #e0e7ff;">' + f.id + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + f.nome + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + f.cpf + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + f.funcao + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + (f.ativo ? 'Sim' : 'Não') + '</td><td style="padding: 1.25rem;"><button class="btn-editar" onclick="abrirModalFuncionario(' + f.id + ')" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; margin-right: 5px;">Editar</button><button class="btn-deletar" onclick="deletarFuncionario(' + f.id + ')" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase;">Deletar</button></td></tr>';
+    });
+  });
+}
+
+function deletarFuncionario(id) {
+  if (confirm('Tem certeza?')) {
+    fetch('/api/funcionarios/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function() { carregarFuncionarios(); });
+  }
+}
+
+// ========================================
+// VIAGENS
+// ========================================
+function carregarViagens() {
+  fetch('/api/viagens', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(viagens) {
+    var tbody = document.getElementById('tabelaViagens');
+    tbody.innerHTML = '';
+
+    viagens.forEach(function(v) {
+      var statusBg = 'background: rgba(37, 99, 235, 0.2); color: #60a5fa;';
+      if (v.status === 'entregue') statusBg = 'background: rgba(16, 185, 129, 0.2); color: #10b981;';
+      if (v.status === 'retorno_problema') statusBg = 'background: rgba(239, 68, 68, 0.2); color: #ef4444;';
+      
+      tbody.innerHTML += '<tr style="border-top: 1px solid rgba(37, 99, 235, 0.1);"><td style="padding: 1.25rem; color: #e0e7ff;">' + v.id + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.placa + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.motorista + '</td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.rota + '</td><td style="padding: 1.25rem;"><span style="' + statusBg + ' padding: 8px 14px; border-radius: 24px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block;">' + v.status + '</span></td><td style="padding: 1.25rem; color: #e0e7ff;">' + v.data_saida + '</td><td style="padding: 1.25rem;"><button style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 8px 14px; font-size: 11px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase;" onclick="alert(\'Edição em desenvolvimento\')" >Editar</button></td></tr>';
+    });
+  });
+}
+
+// ========================================
+// HISTÓRICO
+// ========================================
+function carregarHistorico() {
+  fetch('/api/admin/historico', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(historico) {
+    var div = document.getElementById('listaHistorico');
+    div.innerHTML = '';
+
+    if (historico.length === 0) {
+      div.innerHTML = '<p style="text-align: center; padding: 20px; color: rgba(226, 232, 240, 0.5);">Nenhum histórico registrado</p>';
+      return;
+    }
+
+    historico.forEach(function(h) {
+      div.innerHTML += '<div class="historico-item" style="background: rgba(20, 26, 47, 0.8); border: 1px solid rgba(37, 99, 235, 0.15); padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-left: 5px solid #3b82f6;"><div class="historico-header" style="margin-bottom: 1rem; font-weight: 700; color: #60a5fa; font-size: 14px;"><span>' + h.acao + ' em ' + h.tabela + '</span><span>' + h.usuario + '</span></div><div class="historico-detalhes" style="font-size: 13px; color: rgba(224, 231, 255, 0.6); line-height: 1.8;"><strong>Data:</strong> ' + h.data_hora + '<br><strong>ID Registro:</strong> ' + h.registro_id + '</div></div>';
+    });
+  });
+}
+
+// ========================================
+// FUNÇÕES GERAIS
+// ========================================
+function fecharModal(id) {
+  document.getElementById(id).classList.remove('ativo');
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// Carregar caminhões ao abrir
+carregarCaminhoes();
+  </script>
+</body>
+</html>

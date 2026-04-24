@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico - Controle de Caminhões</title>
+  <link rel="stylesheet" href="style_ultra_profissional.css">
+  <style>
+    .filtros-historico {
+      background: linear-gradient(135deg, #141a2f 0%, #1e2847 100%);
+      padding: 2.5rem;
+      border-radius: 12px;
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      margin-bottom: 2.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .filtros-historico input,
+    .filtros-historico select {
+      background: rgba(10, 15, 31, 0.6);
+      border: 1.5px solid rgba(37, 99, 235, 0.2);
+      color: #e0e7ff;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .filtros-historico input:focus,
+    .filtros-historico select:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      background: rgba(10, 15, 31, 0.8);
+    }
+
+    .btn-pesquisar-historico {
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      color: #0a0f1f;
+      border: none;
+      padding: 13px 32px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+      white-space: nowrap;
+    }
+
+    .btn-pesquisar-historico::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.7s, height 0.7s, opacity 0.7s;
+      opacity: 1;
+      z-index: 0;
+    }
+
+    .btn-pesquisar-historico:hover {
+      transform: scale(1.08);
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.45);
+    }
+
+    .btn-pesquisar-historico:active::before {
+      width: 400px;
+      height: 400px;
+      opacity: 0;
+    }
+
+    .btn-pesquisar-historico span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .resultados-historico {
+      margin-top: 2rem;
+    }
+
+    .resultado-item {
+      background: rgba(20, 26, 47, 0.8);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      padding: 2rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      border-left: 5px solid #3b82f6;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .resultado-item:hover {
+      border-left-color: #60a5fa;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transform: translateX(4px);
+    }
+
+    .resultado-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .resultado-acao {
+      background: rgba(37, 99, 235, 0.2);
+      color: #60a5fa;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .resultado-data {
+      color: rgba(224, 231, 255, 0.6);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .resultado-detalhes {
+      font-size: 14px;
+      color: var(--cor-texto);
+      line-height: 1.8;
+    }
+
+    .vazio-pesquisa {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: rgba(224, 231, 255, 0.5);
+      font-size: 15px;
+      border: 2px dashed rgba(37, 99, 235, 0.2);
+      border-radius: 10px;
+    }
+
+    .label-filtro {
+      color: rgba(224, 231, 255, 0.7);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="background-canvas"></canvas>
+
+  <nav>
+    <h1>Controle de Caminhões</h1>
+    <div class="nav-links">
+      <a href="index.html">Dashboard</a>
+      <a href="caminhoes.html">Caminhões</a>
+      <a href="motoristas.html">Motoristas</a>
+      <a href="viagens.html">Viagens</a>
+      <a href="historico.html" class="ativo">Histórico</a>
+      <a href="admin.html" id="linkAdmin" style="display: none;">Admin</a>
+      <a href="login.html" id="linkLogin">Login</a>
+      <a href="#" id="linkSair" style="display: none;">Sair</a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Histórico de Operações</h2>
+
+    <div class="filtros-historico">
+      <div style="flex: 1; min-width: 150px;">
+        <label class="label-filtro">Data Inicial</label>
+        <input type="date" id="dataInicio">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label class="label-filtro">Data Final</label>
+        <input type="date" id="dataFim">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label class="label-filtro">Tipo</label>
+        <select id="filtroTipo">
+          <option value="">Todos os Tipos</option>
+          <option value="viagem">Viagens</option>
+          <option value="caminhao">Caminhões</option>
+          <option value="motorista">Motoristas</option>
+        </select>
+      </div>
+      <button class="btn-pesquisar-historico" onclick="pesquisarHistorico()">
+        <span>Pesquisar</span>
+      </button>
+    </div>
+
+    <div class="resultados-historico" id="resultados"></div>
+  </main>
+
+  <script>
+const token = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+if (usuario?.role === 'admin') {
+  document.getElementById('linkAdmin').style.display = 'block';
+}
+
+document.getElementById('linkSair').onclick = (e) => {
+  e.preventDefault();
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+};
+
+// Canvas
+function initCanvas() {
+  const canvas = document.getElementById('background-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  let particles = [];
+  
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.8;
+      this.speedY = (Math.random() - 0.5) * 0.8;
+      this.opacity = Math.random() * 0.7 + 0.3;
+    }
+    
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.x < 0) this.x = canvas.width;
+      if (this.y > canvas.height) this.y = 0;
+      if (this.y < 0) this.y = canvas.height;
+    }
+    
+    draw() {
+      ctx.fillStyle = `rgba(37, 99, 235, ${this.opacity})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 120; i++) {
+    particles.push(new Particle());
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+  
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+initCanvas();
+
+function pesquisarHistorico() {
+  const dataInicio = document.getElementById('dataInicio').value;
+  const dataFim = document.getElementById('dataFim').value;
+  const tipo = document.getElementById('filtroTipo').value;
+
+  if (!dataInicio || !dataFim) {
+    alert('Selecione as datas!');
+    return;
+  }
+
+  let url = '/api/admin/historico';
+  const params = new URLSearchParams();
+  
+  if (dataInicio) params.append('dataInicio', dataInicio);
+  if (dataFim) params.append('dataFim', dataFim);
+  if (tipo) params.append('tipo', tipo);
+
+  if (params.toString()) {
+    url += '?' + params.toString();
+  }
+
+  fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+  .then(r => r.json())
+  .then(historico => {
+    exibirResultados(historico);
+  })
+  .catch(err => {
+    console.error('Erro:', err);
+    document.getElementById('resultados').innerHTML = '<div class="vazio-pesquisa">Erro ao buscar histórico</div>';
+  });
+}
+
+function exibirResultados(historico) {
+  const div = document.getElementById('resultados');
+  
+  if (!historico || historico.length === 0) {
+    div.innerHTML = '<div class="vazio-pesquisa">Nenhum registro encontrado para os filtros selecionados.</div>';
+    return;
+  }
+
+  let html = '';
+  
+  historico.forEach(h => {
+    const tipo = h.tabela ? h.tabela.charAt(0).toUpperCase() + h.tabela.slice(1) : 'Viagem';
+    html += `
+      <div class="resultado-item">
+        <div class="resultado-header">
+          <span class="resultado-acao">${h.acao || 'Operação'}</span>
+          <span class="resultado-data">${h.data_hora}</span>
+        </div>
+        <div class="resultado-detalhes">
+          <strong>Tipo:</strong> ${tipo}<br>
+          <strong>Usuário:</strong> ${h.usuario || 'Sistema'}<br>
+          ${h.registro_id ? `<strong>Registro:</strong> #${h.registro_id}` : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  div.innerHTML = html;
+}
+
+// Carregar histórico ao abrir página
+function carregarHistoricoInicial() {
+  const hoje = new Date().toISOString().split('T')[0];
+  const seteHorasAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  document.getElementById('dataInicio').value = seteHorasAtras;
+  document.getElementById('dataFim').value = hoje;
+}
+
+carregarHistoricoInicial();
+
+// Permitir Enter para pesquisar
+document.getElementById('dataFim').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') pesquisarHistorico();
+});
+  </script>
+</body>
+</html>

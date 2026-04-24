@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caminhões - Controle de Caminhões</title>
+  <link rel="stylesheet" href="style_ultra_profissional.css">
+</head>
+<body>
+
+  <canvas id="background-canvas"></canvas>
+
+  <nav>
+    <h1>Controle de Caminhões</h1>
+    <div class="nav-links">
+      <a href="index.html">Dashboard</a>
+      <a href="caminhoes.html" class="ativo">Caminhões</a>
+      <a href="motoristas.html">Motoristas</a>
+      <a href="viagens.html">Viagens</a>
+      <a href="historico.html">Histórico</a>
+      <a href="admin.html" id="linkAdmin" style="display: none;">Admin</a>
+      <a href="login.html" id="linkLogin">Login</a>
+      <a href="#" id="linkSair" style="display: none;">Sair</a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Frota de Caminhões</h2>
+
+    <div class="filtros">
+      <select id="filtroStatus" onchange="carregarCaminhoes()">
+        <option value="">Todos os Status</option>
+        <option value="disponivel">Disponível</option>
+        <option value="carregado">Carregado</option>
+        <option value="saiu_para_entrega">Saiu para Entrega</option>
+      </select>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Placa</th>
+          <th>Tipo</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaCaminhoes"></tbody>
+    </table>
+  </main>
+
+  <!-- MODAL EDITAR STATUS CAMINHÃO -->
+  <div id="modalStatusCaminhao" class="modal">
+    <div class="modal-content">
+      <h3>Atualizar Status do Caminhão</h3>
+      <input type="hidden" id="idCaminhaoStatus">
+      <div class="form-group">
+        <label>Placa</label>
+        <input type="text" id="placaStatus" disabled>
+      </div>
+      <div class="form-group">
+        <label>Novo Status</label>
+        <select id="novoStatusCaminhao">
+          <option value="disponivel">Disponível</option>
+          <option value="carregado">Carregado</option>
+          <option value="saiu_para_entrega">Saiu para Entrega</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observações</label>
+        <textarea id="obsStatus" placeholder="Motivo da alteração..."></textarea>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-cancelar" onclick="fecharModal('modalStatusCaminhao')">Cancelar</button>
+        <button onclick="salvarStatusCaminhao()">Atualizar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+const token = localStorage.getItem('token');
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+if (usuario?.role === 'admin') {
+  document.getElementById('linkAdmin').style.display = 'block';
+}
+
+document.getElementById('linkSair').onclick = (e) => {
+  e.preventDefault();
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+};
+
+// Canvas
+function initCanvas() {
+  const canvas = document.getElementById('background-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  let particles = [];
+  
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.size = Math.random() * 3 + 1;
+      this.speedX = (Math.random() - 0.5) * 0.8;
+      this.speedY = (Math.random() - 0.5) * 0.8;
+      this.opacity = Math.random() * 0.7 + 0.3;
+    }
+    
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.x < 0) this.x = canvas.width;
+      if (this.y > canvas.height) this.y = 0;
+      if (this.y < 0) this.y = canvas.height;
+    }
+    
+    draw() {
+      ctx.fillStyle = `rgba(37, 99, 235, ${this.opacity})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 120; i++) {
+    particles.push(new Particle());
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  
+  animate();
+  
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+initCanvas();
+
+function carregarCaminhoes() {
+  fetch('/api/caminhoes', { headers: { 'Authorization': `Bearer ${token}` } })
+  .then(r => r.json())
+  .then(caminhoes => {
+    const tbody = document.getElementById('tabelaCaminhoes');
+    tbody.innerHTML = '';
+
+    caminhoes.forEach(c => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${c.id}</td>
+          <td>${c.placa}</td>
+          <td>${c.tipo}</td>
+          <td><span class="status-badge status-${c.status}">${c.status}</span></td>
+          <td>
+            <button class="btn-editar" onclick="abrirModalStatusCaminhao(${c.id}, '${c.placa}')">Editar Status</button>
+          </td>
+        </tr>
+      `;
+    });
+  });
+}
+
+function abrirModalStatusCaminhao(id, placa) {
+  document.getElementById('idCaminhaoStatus').value = id;
+  document.getElementById('placaStatus').value = placa;
+  document.getElementById('modalStatusCaminhao').classList.add('ativo');
+}
+
+function salvarStatusCaminhao() {
+  const id = document.getElementById('idCaminhaoStatus').value;
+  const status = document.getElementById('novoStatusCaminhao').value;
+  const obs = document.getElementById('obsStatus').value;
+
+  fetch(`/api/caminhoes/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ status, observacoes: obs })
+  })
+  .then(r => r.json())
+  .then(data => {
+    fecharModal('modalStatusCaminhao');
+    carregarCaminhoes();
+  });
+}
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove('ativo');
+}
+
+carregarCaminhoes();
+  </script>
+</body>
+</html>
